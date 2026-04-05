@@ -1,0 +1,85 @@
+services:
+
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ticketing}
+      POSTGRES_USER: ${POSTGRES_USER:-ticketing_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_local}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ticketing_user} -d ${POSTGRES_DB:-ticketing}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: docker.io/library/redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Containerfile
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8080}:8080"
+    environment:
+      API_PORT: 8080
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-ticketing}
+      POSTGRES_USER: ${POSTGRES_USER:-ticketing_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_local}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_NAME: ${QUEUE_NAME:-ticket_orders}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Containerfile
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-ticketing}
+      POSTGRES_USER: ${POSTGRES_USER:-ticketing_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_local}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_NAME: ${QUEUE_NAME:-ticket_orders}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Containerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      FRONTEND_PORT: 3000
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
