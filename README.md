@@ -39,10 +39,26 @@ Prikazuje cijeli tok: lokalni razvoj kroz Compose i produkcijski deployment kroz
 
 - Multi-stage Docker build i non-root runtime korisnik
 - Secret + ConfigMap odvojena konfiguracija
-- Liveness/Readiness probe
+- Liveness/Readiness sonde
 - Resource requests/limits
 - ServiceAccount + RBAC
 - NetworkPolicy segmentacija
-- Trivy skeniranje slika u CI pipelineu
+- Trivy skeniranje slika u CI pipelineu (`exit-code: 1` quality gate)
+- SemVer tagiranje slika (`v1.2.3`, `1.2`, `1`, `latest`) + commit-sha
+- Dependabot weekly PR-ovi (npm, docker base, github-actions)
+- Retention policy — čuva se zadnjih 10 untagged verzija po slici
 
-Detalji skeniranja: `docs/security/image-scan-report.md`
+## Dokumentacija
+
+- `docs/architecture.md` — arhitekturni dijagram, tok podataka, kontejneri vs. VM
+- `docs/delivery-metrics.md` — baseline vs. pipeline, DORA metrike
+- `docs/security/` — Trivy izvještaji po servisu
+- `RUNBOOK.md` — operativni priručnik za incidente (symptom → dijagnoza → uzrok → ispravak → validacija)
+
+## Release postupak
+
+```bash
+# Tagiraj i pushaj SemVer tag — pipeline objavljuje v1.2.3, 1.2, 1, latest
+git tag v1.2.3
+git push origin v1.2.3
+```
