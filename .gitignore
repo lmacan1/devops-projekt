@@ -1,1 +1,5 @@
 .env
+
+# Local tooling binaries (instaliraju se izvan repozitorija)
+kubectl
+minikube-linux-amd64
